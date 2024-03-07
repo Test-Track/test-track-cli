@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 "use strict";
+!function(){try{var e="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:{},n=(new Error).stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="86a0b079-850c-569b-895f-70015b522c62")}catch(e){}}();
+
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -54,21 +56,6 @@ Sentry.init({
     // Set sampling rate for profiling - this is relative to tracesSampleRate
     profilesSampleRate: 1.0,
 });
-const transaction = Sentry.startTransaction({
-    op: "test",
-    name: "My First Test Transaction",
-});
-setTimeout(() => {
-    try {
-        foo();
-    }
-    catch (e) {
-        Sentry.captureException(e);
-    }
-    finally {
-        transaction.finish();
-    }
-}, 99);
 const yargs = require("yargs");
 const fileToBase64 = (filePath) => {
     const fileBuffer = fs.readFileSync(filePath);
@@ -157,3 +144,4 @@ catch (err) {
     }
 }
 //# sourceMappingURL=index.js.map
+//# debugId=86a0b079-850c-569b-895f-70015b522c62

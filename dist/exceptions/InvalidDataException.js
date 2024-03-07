@@ -1,4 +1,6 @@
 "use strict";
+!function(){try{var e="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:{},n=(new Error).stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="382f56f8-89c4-525e-8daa-49ff110d047d")}catch(e){}}();
+
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InvalidDataException = void 0;
 class InvalidDataException extends Error {
@@ -10,3 +12,4 @@ class InvalidDataException extends Error {
 }
 exports.InvalidDataException = InvalidDataException;
 //# sourceMappingURL=InvalidDataException.js.map
+//# debugId=382f56f8-89c4-525e-8daa-49ff110d047d
