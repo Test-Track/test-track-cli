@@ -5,8 +5,10 @@ import {FileNotFoundException} from "./exceptions/FileNotFoundException";
 import {ResultFileEmptyException} from "./exceptions/ResultFileEmptyException";
 import axios from "axios";
 import {InvalidDataException} from "./exceptions/InvalidDataException";
-import {argv} from "yargs";
-import * as process from "process";
+import * as path from "node:path";
+import {InvalidCommandException} from "./exceptions/InvalidCommandException";
+
+type FilesToProcess = {file_name: string, file_content: string}
 
 const yargs = require("yargs");
 
@@ -17,7 +19,8 @@ const fileToBase64 = (filePath: string) => {
 }
 
 const sendRequest = async (data: any) => {
-    const url = 'https://app.test-track.com/backend/api/automated-test-run';
+    //const url = 'https://app.test-track.com/backend/api/automated-test-run';
+    const url = 'https://staging-app.test-track.com/api/automated-test-run';
 
     const headers = {
         'Authorization': `Bearer ${apiKey}`,
@@ -41,12 +44,16 @@ const options = yargs
     .option("version", {alias: "v", description: "Show version number", type: "boolean"})
     .option("key", { alias: "api-key", describe: "Company API Key", type: "string", demandOption: true })
     .option("id", {alias: "project-id", describe: "Project id you are submitting the automated test run against", type: "string", demandOption: true})
-    .option("file", {alias: "file", description: "JUnit XML File path", demandOption: true})
+    .option("file", {alias: "file", description: "JUnit XML File path", demandOption: false})
+    .option("directory", {alias: "directory", description: "Path to where are all JUnit XML files are stored. Any non XML files will be ignored", type: "string", demandOption: false})
+    .option("branch", {alias: "branch", description: "The branch name this test run is for, if not provided it will default to main", type: "string"})
+    .option("tags", {alias: "tags", description: "Tags to be added to the test run, comma separated no spaces", type: "string"})
     .argv;
 
 const apiKey = options['api-key'];
 const projectId = options['project-id'];
 const file = options.file;
+const directory = options.directory;
 
 try
 {
@@ -59,27 +66,56 @@ try
     {
         throw new InvalidDataException("project-id")
     }
-    else if (file.length === 0)
+
+    if (typeof file !== typeof undefined && typeof directory !== typeof undefined)
     {
-        throw new InvalidDataException("file");
+        throw new InvalidCommandException("You cannot use both --file and --directory at the same time");
     }
 
-    if (!fs.existsSync(file))
+    const data : {project_id: string, file_name?: string, file_content?: string, files?: string, branch?: string, tags?: string} = {
+        project_id: projectId
+    }
+    if (file?.length > 0) {
+
+        if (!fs.existsSync(file))
+        {
+            throw new FileNotFoundException(file);
+        }
+
+        data.file_name = path.basename(file);
+        data.file_content = fileToBase64(file);
+    }
+    else if (directory?.length > 0)
     {
-        throw new FileNotFoundException(file);
-    }
+        if (!fs.existsSync(directory))
+        {
+            throw new FileNotFoundException(file);
+        }
 
-    const base64 = fileToBase64(file);
-    if (base64.length === 0)
-    {
-        throw new ResultFileEmptyException(file);
-    }
+        const files = fs.readdirSync(directory);
+        const processFiles : FilesToProcess[] = [];
+        files.forEach(file => {
+            if (path.extname(file) === '.xml') {
 
-    const data = {
-        project_id: projectId,
-        file_content: base64
-    }
+                processFiles.push({
+                    file_name: path.basename(`${directory}/${file}`),
+                    file_content: fileToBase64(`${directory}/${file}`)
+                });
 
+            }
+        })
+        // @ts-ignore
+        data.files = processFiles;
+        if (data.files.length === 0)
+        {
+            throw new ResultFileEmptyException(directory);
+        }
+    }
+    else {
+        throw new InvalidCommandException("At least --file or --directory must be specified");
+    }
+    data.branch = options?.branch?.length > 0 ? options?.branch : "main";
+    data.tags = options?.tags?.length > 0 ? options?.tags : "";
     sendRequest(data).then(response => {
         //We should get no other response here other than 200 OK. Any 4xx or 5xx errors
         //are caught by the catch handler
@@ -103,7 +139,7 @@ try
 
         }
     }).catch(err => {
-        console.error("An unexpected error occurred submitting the automated test run to Test Track", err);
+        console.error("An unexpected error occurred submitting the automated test run to Test Track",);
         console.error("If you continue to see this problem, please raise a support ticket at https://support.devso.io with the details outputted below")
         console.error("Status: " + err.response.status + ": " + err.response.statusText);
         console.error("Err", err.response.data);
@@ -120,6 +156,10 @@ catch (err)
         console.error(err.message);
     }
     else if (err instanceof InvalidDataException)
+    {
+        console.error(err.message);
+    }
+    else if (err instanceof InvalidCommandException)
     {
         console.error(err.message);
     }
